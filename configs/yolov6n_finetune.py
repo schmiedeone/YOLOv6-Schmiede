@@ -1,7 +1,7 @@
-# YOLOv6s model
+# YOLOv6s model fine tuning configurations for QualiCam 
 model = dict(
     type='YOLOv6n',
-    pretrained='weights/yolov6n.pt',
+    pretrained='weights/yolov6n_farmsort_base.pt',
     depth_multiple=0.33,
     width_multiple=0.25,
     backbone=dict(
@@ -51,9 +51,9 @@ solver = dict(
 )
 
 data_aug = dict(
-    hsv_h=0.0138,
-    hsv_s=0.664,
-    hsv_v=0.464,
+    hsv_h=0.015,
+    hsv_s=0.2,
+    hsv_v=0.05,
     degrees=0.373,
     translate=0.245,
     scale=0.898,
