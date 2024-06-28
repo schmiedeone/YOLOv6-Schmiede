@@ -39,7 +39,7 @@ model = dict(
 )
 
 solver = dict(
-    optim='Adam',
+    optim='SGD',
     lr_scheduler='Cosine',
     lr0=0.0032,
     lrf=0.12,
