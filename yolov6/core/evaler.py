@@ -37,7 +37,7 @@ class Evaler:
                  force_no_pad=False,
                  not_infer_on_rect=False,
                  scale_exact=False,
-                 verbose=False,
+                 verbose=True,
                  do_coco_metric=True,
                  do_pr_metric=False,
                  plot_curve=True,
