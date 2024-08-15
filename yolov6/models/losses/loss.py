@@ -157,7 +157,7 @@ class ComputeLoss:
 		# avoid devide zero error, devide by zero will cause loss to be inf or nan.
         # if target_scores_sum is 0, loss_cls equals to 0 alson 
         if target_scores_sum > 0:
-        	loss_cls /= target_scores_sum
+          loss_cls /= target_scores_sum
         
         # bbox loss
         loss_iou, loss_dfl = self.bbox_loss(pred_distri, pred_bboxes, anchor_points_s, target_bboxes,
@@ -196,7 +196,7 @@ class VarifocalLoss(nn.Module):
     def forward(self, pred_score,gt_score, label, alpha=0.75, gamma=2.0):
 
         weight = alpha * pred_score.pow(gamma) * (1 - label) + gt_score * label
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast('cuda', enabled=False):
             loss = (F.binary_cross_entropy(pred_score.float(), gt_score.float(), reduction='none') * weight).sum()
 
         return loss
