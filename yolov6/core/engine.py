@@ -12,7 +12,6 @@ import cv2
 import numpy as np
 import math
 import torch
-from torch.cuda import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 
@@ -139,7 +138,7 @@ class Trainer:
             write_tbimg(self.tblogger, self.vis_train_batch, self.step + self.max_stepnum * self.epoch, type='train')
 
         # forward
-        with amp.autocast(enabled=self.device != 'cpu'):
+        with torch.amp.autocast('cuda', enabled=self.device != 'cpu'):
             preds, s_featmaps = self.model(images)
             if self.args.distill:
                 with torch.no_grad():
@@ -254,7 +253,7 @@ class Trainer:
         self.warmup_stepnum = max(round(self.cfg.solver.warmup_epochs * self.max_stepnum), 1000) if self.args.quant is False else 0
         self.scheduler.last_epoch = self.start_epoch - 1
         self.last_opt_step = -1
-        self.scaler = amp.GradScaler(enabled=self.device != 'cpu')
+        self.scaler = torch.amp.GradScaler('cuda', enabled=self.device != 'cpu')
 
         self.best_ap, self.ap = 0.0, 0.0
         self.best_stop_strong_aug_ap = 0.0
