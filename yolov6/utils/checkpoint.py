@@ -10,7 +10,7 @@ from yolov6.utils.torch_utils import fuse_model
 
 def load_state_dict(weights, model, map_location=None):
     """Load weights from checkpoint file, only assign weights those layers' name and shape are match."""
-    ckpt = torch.load(weights, map_location=map_location)
+    ckpt = torch.load(weights, map_location=map_location , weights_only=False)
     state_dict = ckpt['model'].float().state_dict()
     model_state_dict = model.state_dict()
     state_dict = {k: v for k, v in state_dict.items() if k in model_state_dict and v.shape == model_state_dict[k].shape}
@@ -49,7 +49,7 @@ def strip_optimizer(ckpt_dir, epoch):
         ckpt_path = osp.join(ckpt_dir, '{}_ckpt.pt'.format(s))
         if not osp.exists(ckpt_path):
             continue
-        ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))
+        ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'), weights_only=False)
         if ckpt.get('ema'):
             ckpt['model'] = ckpt['ema']  # replace model with ema
         for k in ['optimizer', 'ema', 'updates']:  # keys
