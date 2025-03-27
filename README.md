@@ -1,17 +1,3 @@
-<p align="center">
-  <img src="assets/banner-YOLO.png" align="middle" width = "1000" />
-</p>
-
-English | [简体中文](README_cn.md)
-
- <br>
-
- <div>
-    </a>
-    <a href="[https://colab.research.google.com/github/meituan/YOLOv6/blob/main/turtorial.ipynb](https://colab.research.google.com/gist/HouSanDuo123/bdad4ad6706209d4e9275d2186d54289/tutorial.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
-     <a href="https://www.kaggle.com/code/housanduo/yolov6"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
-  </div>
- <br>
 
 ## YOLOv6
 
@@ -235,10 +221,3 @@ python tools/infer.py --weights yolov6s6.pt --img 1280 --source img.jpg / imgdir
  * Blog post: [YOLOv6 Object Detection – Paper Explanation and Inference](https://learnopencv.com/yolov6-object-detection/)
 
    </details>
-
-### [FAQ（Continuously updated）](https://github.com/meituan/YOLOv6/wiki/FAQ%EF%BC%88Continuously-updated%EF%BC%89)
-
-If you have any questions, welcome to join our WeChat group to discuss and exchange.
-<p align="center">
-  <img src="assets/wechat_qrcode.png" align="middle" width = "1000" />
-</p>
