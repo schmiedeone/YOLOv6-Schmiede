@@ -22,7 +22,7 @@ def load_state_dict(weights, model, map_location=None):
 def load_checkpoint(weights, map_location=None, inplace=True, fuse=True):
     """Load model from checkpoint file."""
     LOGGER.info("Loading checkpoint from {}".format(weights))
-    ckpt = torch.load(weights, map_location=map_location)  # load
+    ckpt = torch.load(weights, map_location=map_location, weights_only=False)  # load
     model = ckpt['ema' if ckpt.get('ema') else 'model'].float()
     if fuse:
         LOGGER.info("\nFusing model...")
