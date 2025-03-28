@@ -101,7 +101,7 @@ class Evaler:
 
     def predict_model(self, model, dataloader, task):
         '''Model prediction
-        Predicts the whole dataset and gets the prediced results and inference time.
+        Predicts the whole dataset and gets the predicted results and inference time.
         '''
         self.speed_result = torch.zeros(4, device=self.device)
         pred_results = []
