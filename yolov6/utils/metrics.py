@@ -64,10 +64,11 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
     # Compute F1 (harmonic mean of precision and recall)
     f1 = 2 * p * r / (p + r + 1e-16)
     if plot:
-        plot_pr_curve(px, py, ap, Path(save_dir) / 'PR_curve.png', names)
-        plot_mc_curve(px, f1, Path(save_dir) / 'F1_curve.png', names, ylabel='F1')
-        plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
-        plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
+        unique_class_names = [names[int(i)] for i in unique_classes] if names else []
+        plot_pr_curve(px, py, ap, Path(save_dir) / 'PR_curve.png', unique_class_names)
+        plot_mc_curve(px, f1, Path(save_dir) / 'F1_curve.png', unique_class_names, ylabel='F1')
+        plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', unique_class_names, ylabel='Precision')
+        plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', unique_class_names, ylabel='Recall')
 
     # i = f1.mean(0).argmax()  # max F1 index
     # return p[:, i], r[:, i], ap, f1[:, i], unique_classes.astype('int32')
@@ -123,18 +124,25 @@ def plot_pr_curve(px, py, ap, save_dir='pr_curve.png', names=()):
     fig.savefig(Path(save_dir), dpi=250)
 
 
-def plot_mc_curve(px, py, save_dir='mc_curve.png', names=(), xlabel='Confidence', ylabel='Metric'):
+def plot_mc_curve(px, py, save_dir='mc_curve.png', names=(), xlabel='Confidence', ylabel='Metric', plot_optimal_conf=False):
     # Metric-confidence curve
     fig, ax = plt.subplots(1, 1, figsize=(9, 6), tight_layout=True)
 
     if 0 < len(names) < 21:  # display per-class legend if < 21 classes
         for i, y in enumerate(py):
             ax.plot(px, y, linewidth=1, label=f'{names[i]}')  # plot(confidence, metric)
+            if plot_optimal_conf:
+                max_y = y.max()
+                max_x = px[y.argmax()]
+                ax.scatter([max_x], [max_y], label=f'{names[i]} max {max_y:.2f} at {max_x:.3f}', zorder=5)  # highlight max point
     else:
         ax.plot(px, py.T, linewidth=1, color='grey')  # plot(confidence, metric)
 
     y = py.mean(0)
-    ax.plot(px, y, linewidth=3, color='blue', label=f'all classes {y.max():.2f} at {px[y.argmax()]:.3f}')
+    max_y = y.max()
+    max_x = px[y.argmax()]
+    ax.plot(px, y, linewidth=3, color='blue', label=f'all classes {max_y:.2f} at {max_x:.3f}')
+    ax.scatter([max_x], [max_y], color='red', zorder=5, label=f'max {max_y:.2f} at {max_x:.3f}')  # highlight max point
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_xlim(0, 1)
