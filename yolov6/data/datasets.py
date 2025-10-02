@@ -169,6 +169,22 @@ class TrainValDataset(Dataset):
 
         labels_out = torch.zeros((len(labels), 6))
         if len(labels):
+            #normalize before passing to torch with safety margin post augmentation
+            eps = 1e-3
+            
+            x_c, y_c, bw, bh = labels[:, 1], labels[:, 2], labels[:, 3], labels[:, 4]
+
+            x_c = np.clip(x_c, bw / 2 + eps, 1 - bw / 2 - eps)
+            y_c = np.clip(y_c, bh / 2 + eps, 1 - bh / 2 - eps)
+
+            bw = np.clip(bw, eps, 1 - eps)
+            bh = np.clip(bh, eps, 1 - eps)
+
+            labels[:, 1] = x_c
+            labels[:, 2] = y_c
+            labels[:, 3] = bw
+            labels[:, 4] = bh
+
             labels_out[:, 1:] = torch.from_numpy(labels)
 
         # Convert
