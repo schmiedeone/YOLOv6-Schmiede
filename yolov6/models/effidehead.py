@@ -12,7 +12,7 @@ class Detect(nn.Module):
     With hardware-aware degisn, the decoupled head is optimized with
     hybridchannels methods.
     '''
-    def __init__(self, num_classes=80, num_layers=3, inplace=True, head_layers=None, use_dfl=True, reg_max=16):  # detection layer
+    def __init__(self, num_classes=80, num_layers=3, inplace=True, head_layers=None, use_dfl=True, reg_max=16, strides=None):  # detection layer
         super().__init__()
         assert head_layers is not None
         self.nc = num_classes  # number of classes
@@ -21,8 +21,13 @@ class Detect(nn.Module):
         self.grid = [torch.zeros(1)] * num_layers
         self.prior_prob = 1e-2
         self.inplace = inplace
-        stride = [8, 16, 32] if num_layers == 3 else [8, 16, 32, 64] # strides computed during build
-        self.stride = torch.tensor(stride)
+        # From the config when given: a P2 model runs [4, 8, 16, 32], and this tensor
+        # rescales decoded boxes at eval/export, so a stale default is silent.
+        if strides is None:
+            strides = [8, 16, 32] if num_layers == 3 else [8, 16, 32, 64]
+        assert len(strides) == num_layers, \
+            f'head.strides has {len(strides)} entries for num_layers={num_layers}'
+        self.stride = torch.tensor(strides)
         self.use_dfl = use_dfl
         self.reg_max = reg_max
         self.proj_conv = nn.Conv2d(self.reg_max + 1, 1, 1, bias=False)
@@ -129,9 +134,15 @@ class Detect(nn.Module):
                 axis=-1)
 
 
-def build_effidehead_layer(channels_list, num_anchors, num_classes, reg_max=16, num_layers=3):
+def build_effidehead_layer(channels_list, num_anchors, num_classes, reg_max=16, num_layers=3, chx=None):
 
-    chx = [6, 8, 10] if num_layers == 3 else [8, 9, 10, 11]
+    # Which channels_list entries the heads read. The defaults assume the stock
+    # 3-level neck or the P6 one; a neck with a different channels_list layout passes
+    # its own indices through head.chx.
+    if chx is None:
+        chx = [6, 8, 10] if num_layers == 3 else [8, 9, 10, 11]
+    assert len(chx) == num_layers, \
+        f'head.chx has {len(chx)} entries for num_layers={num_layers}'
 
     head_layers = nn.Sequential(
         # stem0

@@ -111,6 +111,9 @@ def build_network(config, channels, num_classes, num_layers, fuse_ab=False, dist
         head = Detect(num_classes, num_layers, head_layers=head_layers, use_dfl=use_dfl)
 
     elif fuse_ab:
+        if config.model.head.get('chx') is not None:
+            LOGGER.error('ERROR in: --fuse_ab does not support a custom head.chx.\n')
+            exit()
         from yolov6.models.heads.effidehead_fuseab import Detect, build_effidehead_layer
         anchors_init = config.model.head.anchors_init
         head_layers = build_effidehead_layer(channels_list, 3, num_classes, reg_max=reg_max, num_layers=num_layers)
@@ -118,8 +121,12 @@ def build_network(config, channels, num_classes, num_layers, fuse_ab=False, dist
 
     else:
         from yolov6.models.effidehead import Detect, build_effidehead_layer
-        head_layers = build_effidehead_layer(channels_list, 1, num_classes, reg_max=reg_max, num_layers=num_layers)
-        head = Detect(num_classes, num_layers, head_layers=head_layers, use_dfl=use_dfl)
+        # Optional in the config; None keeps the built-in defaults for stock models.
+        head_layers = build_effidehead_layer(
+            channels_list, 1, num_classes, reg_max=reg_max, num_layers=num_layers,
+            chx=config.model.head.get('chx'))
+        head = Detect(num_classes, num_layers, head_layers=head_layers, use_dfl=use_dfl,
+                      strides=config.model.head.get('strides'))
 
     return backbone, neck, head
 

@@ -1081,3 +1081,169 @@ class CSPRepBiFPANNeck_P6(nn.Module):
         outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
 
         return outputs
+
+
+class RepBiFPANNeck_P2(nn.Module):
+    """RepBiFPANNeck extended one level down, so P2/4 gets its own detection head.
+
+    Outputs four levels at strides [4, 8, 16, 32] instead of three at [8, 16, 32].
+    The top-down path gains a P3 -> P2 stage and the bottom-up path a P2 -> P3 stage;
+    everything above P3 is unchanged from RepBiFPANNeck. Set fuse_P2=True on the
+    backbone so x3 (the stride-4 feature) is available.
+
+    Plain concat rather than BiFusion at the P2 level: BiFusion needs a
+    higher-resolution feature to downsample into the fusion, and there is nothing
+    below P2 in the backbone.
+
+    channels_list (neck part, after the 5 backbone entries):
+      [5]  P5 lateral / top-down P4 out       [10] bottom-up P3 out  -> detect
+      [6]  P4 lateral / top-down P3 out       [11] P3 -> P4 downsample
+      [7]  P3 lateral / P2 upsample           [12] bottom-up P4 out  -> detect
+      [8]  top-down P2 out       -> detect    [13] P4 -> P5 downsample
+      [9]  P2 -> P3 downsample                [14] bottom-up P5 out  -> detect
+
+    num_repeats (neck part): [5] Rep_p4, [6] Rep_p3, [7] Rep_p2, [8] Rep_n2,
+    [9] Rep_n3, [10] Rep_n4.
+    """
+
+    def __init__(
+        self,
+        channels_list=None,
+        num_repeats=None,
+        block=RepVGGBlock
+    ):
+        super().__init__()
+
+        assert channels_list is not None
+        assert num_repeats is not None
+
+        # --- top-down: P5 -> P4 (unchanged) ---
+        self.reduce_layer0 = SimConv(
+            in_channels=channels_list[4],
+            out_channels=channels_list[5],
+            kernel_size=1,
+            stride=1
+        )
+        self.Bifusion0 = BiFusion(
+            in_channels=[channels_list[3], channels_list[5]],
+            out_channels=channels_list[5],
+        )
+        self.Rep_p4 = RepBlock(
+            in_channels=channels_list[5],
+            out_channels=channels_list[5],
+            n=num_repeats[5],
+            block=block
+        )
+
+        # --- top-down: P4 -> P3 (unchanged) ---
+        self.reduce_layer1 = SimConv(
+            in_channels=channels_list[5],
+            out_channels=channels_list[6],
+            kernel_size=1,
+            stride=1
+        )
+        self.Bifusion1 = BiFusion(
+            in_channels=[channels_list[5], channels_list[6]],
+            out_channels=channels_list[6],
+        )
+        self.Rep_p3 = RepBlock(
+            in_channels=channels_list[6],
+            out_channels=channels_list[6],
+            n=num_repeats[6],
+            block=block
+        )
+
+        # --- top-down: P3 -> P2 (new) ---
+        # The lateral stays thin so the stride-4 transposed conv is cheap; the fusion
+        # widens back out so the P2 head has capacity.
+        self.reduce_layer2 = SimConv(
+            in_channels=channels_list[6],
+            out_channels=channels_list[7],
+            kernel_size=1,
+            stride=1
+        )
+        self.upsample2 = Transpose(
+            in_channels=channels_list[7],
+            out_channels=channels_list[7],
+        )
+        self.Rep_p2 = RepBlock(
+            in_channels=channels_list[7] + channels_list[1],
+            out_channels=channels_list[8],
+            n=num_repeats[7],
+            block=block
+        )
+
+        # --- bottom-up: P2 -> P3 (new) ---
+        self.downsample3 = SimConv(
+            in_channels=channels_list[8],
+            out_channels=channels_list[9],
+            kernel_size=3,
+            stride=2
+        )
+        self.Rep_n2 = RepBlock(
+            in_channels=channels_list[9] + channels_list[7],
+            out_channels=channels_list[10],
+            n=num_repeats[8],
+            block=block
+        )
+
+        # --- bottom-up: P3 -> P4 ---
+        self.downsample2 = SimConv(
+            in_channels=channels_list[10],
+            out_channels=channels_list[11],
+            kernel_size=3,
+            stride=2
+        )
+        self.Rep_n3 = RepBlock(
+            in_channels=channels_list[11] + channels_list[6],
+            out_channels=channels_list[12],
+            n=num_repeats[9],
+            block=block
+        )
+
+        # --- bottom-up: P4 -> P5 ---
+        self.downsample1 = SimConv(
+            in_channels=channels_list[12],
+            out_channels=channels_list[13],
+            kernel_size=3,
+            stride=2
+        )
+        self.Rep_n4 = RepBlock(
+            in_channels=channels_list[13] + channels_list[5],
+            out_channels=channels_list[14],
+            n=num_repeats[10],
+            block=block
+        )
+
+    def forward(self, input):
+
+        (x3, x2, x1, x0) = input
+
+        fpn_out0 = self.reduce_layer0(x0)
+        f_concat_layer0 = self.Bifusion0([fpn_out0, x1, x2])
+        f_out0 = self.Rep_p4(f_concat_layer0)
+
+        fpn_out1 = self.reduce_layer1(f_out0)
+        f_concat_layer1 = self.Bifusion1([fpn_out1, x2, x3])
+        f_out1 = self.Rep_p3(f_concat_layer1)
+
+        fpn_out2 = self.reduce_layer2(f_out1)
+        up_feat2 = self.upsample2(fpn_out2)
+        f_concat_layer2 = torch.cat([up_feat2, x3], 1)
+        pan_out3 = self.Rep_p2(f_concat_layer2)          # P2/4
+
+        down_feat2 = self.downsample3(pan_out3)
+        p_concat_layer2 = torch.cat([down_feat2, fpn_out2], 1)
+        pan_out2 = self.Rep_n2(p_concat_layer2)          # P3/8
+
+        down_feat1 = self.downsample2(pan_out2)
+        p_concat_layer1 = torch.cat([down_feat1, fpn_out1], 1)
+        pan_out1 = self.Rep_n3(p_concat_layer1)          # P4/16
+
+        down_feat0 = self.downsample1(pan_out1)
+        p_concat_layer0 = torch.cat([down_feat0, fpn_out0], 1)
+        pan_out0 = self.Rep_n4(p_concat_layer0)          # P5/32
+
+        outputs = [pan_out3, pan_out2, pan_out1, pan_out0]
+
+        return outputs
