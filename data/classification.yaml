@@ -6,5 +6,5 @@ test: dataset/images/test # test images
 # whether it is coco dataset, only coco dataset should be set to True.
 is_coco: False
 # Classes
-nc: 8  
-names: ['potato', 'cut', 'damage', 'rock', 'irregular', 'green', 'hole' , 'scab']  
+nc: 10  
+names: ['potato', 'cut', 'damage', 'rock', 'irregular', 'green', 'hole' , 'scab', 'old', 'foreign-object']  

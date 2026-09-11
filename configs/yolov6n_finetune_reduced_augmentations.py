@@ -52,14 +52,14 @@ solver = dict(
 
 data_aug = dict(
     hsv_h=0.015,
-    hsv_s=0.2,
-    hsv_v=0.05,
-    degrees=0.373,
-    translate=0.245,
-    scale=0.898,
-    shear=0.602,
-    flipud=0.00856,
+    hsv_s=0.3,
+    hsv_v=0.1,
+    degrees=30.0,
+    translate=0.1,
+    scale=0.4,
+    shear=0.0,
+    flipud=0.5,
     fliplr=0.5,
-    mosaic=1.0,
-    mixup=0.243,
+    mosaic=0.25,
+    mixup=0.0,
 )
