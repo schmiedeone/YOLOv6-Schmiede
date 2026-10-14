@@ -383,6 +383,24 @@ class Trainer:
             LOGGER.info(f'Loading state_dict from {weights} for fine-tuning...')
             model = load_state_dict(weights, model, map_location=device)
 
+        # model.freeze_prefixes: parameter-name prefixes to keep fixed, e.g. ['backbone'].
+        # Applied before the optimizer and DDP are built; frozen params get no grad,
+        # so the optimizer skips them. Read from the config file, so --resume re-applies it.
+        freeze = list(cfg.model.get('freeze_prefixes') or [])  # not 'freeze': addict.Dict has a freeze() method
+        if freeze:
+            matched = set()
+            for name, param in model.named_parameters():
+                for prefix in freeze:
+                    if name == prefix or name.startswith(prefix + '.'):
+                        param.requires_grad = False
+                        matched.add(prefix)
+            unmatched = [p for p in freeze if p not in matched]
+            if unmatched:
+                raise ValueError(f'model.freeze_prefixes match no parameter: {unmatched}')
+            frozen = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+            total = sum(p.numel() for p in model.parameters())
+            LOGGER.info(f'Freezing parameters under {freeze}: {frozen}/{total} frozen')
+
         LOGGER.info('Model: {}'.format(model))
         return model
 
